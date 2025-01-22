@@ -4,7 +4,9 @@ import (
 	"errors"
 )
 
-var ErrNotComponent = errors.New("not a component")
+var ErrComponentTypeNotFound = errors.New("manager does not have components of this type")
+var ErrComponentNotFound = errors.New("component not found")
+var ErrEntityNotFound = errors.New("entity not found")
 
 // Entity acts as a container of components, it is just an ID
 type Entity uint32
@@ -39,7 +41,7 @@ func (m *Manager) CreateEntity() Entity {
 /** Component management **/
 
 // AddComponent adds a component to an entity
-func (m *Manager) AddComponent(entity Entity, component Component) error {
+func (m *Manager) AddComponentToEntity(entity Entity, component Component) error {
 	if _, ok := m.components[component.Type]; !ok {
 		m.components[component.Type] = make(map[Entity][]Component)
 	}
@@ -47,19 +49,23 @@ func (m *Manager) AddComponent(entity Entity, component Component) error {
 	return nil
 }
 
-// GetComponent returns the components of the given type on the given entity
-func (m *Manager) GetComponent(entity Entity, componentType string) (*[]Component, bool) {
+// GetComponentsOfEntity returns the components of the given type on the given entity
+func (m *Manager) GetComponentsOfEntity(entity Entity, componentType string) (*[]Component, error) {
 	if _, ok := m.components[componentType]; !ok {
-		return nil, false
+		return nil, ErrComponentTypeNotFound
 	}
 	c, ok := m.components[componentType][entity]
-	return &c, ok
+	if !ok {
+		return nil, ErrComponentNotFound
+	}
+	return &c, nil
 }
 
 // DeleteComponent deletes the component key for the given entity
-func (m *Manager) DeleteComponent(entity Entity, componentType string) {
+func (m *Manager) DeleteComponentsOfEntity(entity Entity, componentType string) error {
 	if _, ok := m.components[componentType]; !ok {
-		return
+		return ErrComponentTypeNotFound
 	}
 	delete(m.components[componentType], entity)
+	return nil
 }
