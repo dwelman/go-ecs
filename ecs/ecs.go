@@ -1,6 +1,8 @@
 package ecs
 
-import "errors"
+import (
+	"errors"
+)
 
 var ErrNotComponent = errors.New("not a component")
 
@@ -9,18 +11,19 @@ type Entity uint32
 
 type Component struct {
 	Type string
+	Data any
 }
 
-// TODO: Naive implementation, this will be upgraded as needed
+// Manager is a generic type that manages components
 type Manager struct {
 	// components mapped by type -> [entity -> component]
-	components map[string]map[Entity][]interface{}
+	components map[string]map[Entity][]Component
 	nextID     Entity
 }
 
 func NewManager() *Manager {
 	return &Manager{
-		components: make(map[string]map[Entity][]interface{}),
+		components: make(map[string]map[Entity][]Component),
 		nextID:     0,
 	}
 }
@@ -36,25 +39,21 @@ func (m *Manager) CreateEntity() Entity {
 /** Component management **/
 
 // AddComponent adds a component to an entity
-func (m *Manager) AddComponent(entity Entity, component interface{}) error {
-	c, ok := component.(Component)
-	if !ok {
-		return ErrNotComponent
+func (m *Manager) AddComponent(entity Entity, component Component) error {
+	if _, ok := m.components[component.Type]; !ok {
+		m.components[component.Type] = make(map[Entity][]Component)
 	}
-	if _, ok := m.components[c.Type]; !ok {
-		m.components[c.Type] = make(map[Entity][]interface{})
-	}
-	m.components[c.Type][entity] = append(m.components[c.Type][entity], component)
+	m.components[component.Type][entity] = append(m.components[component.Type][entity], component)
 	return nil
 }
 
 // GetComponent returns the components of the given type on the given entity
-func (m *Manager) GetComponent(entity Entity, componentType string) (*[]interface{}, bool) {
+func (m *Manager) GetComponent(entity Entity, componentType string) (*[]Component, bool) {
 	if _, ok := m.components[componentType]; !ok {
 		return nil, false
 	}
-	component, ok := m.components[componentType][entity]
-	return &component, ok
+	c, ok := m.components[componentType][entity]
+	return &c, ok
 }
 
 // DeleteComponent deletes the component key for the given entity
@@ -64,5 +63,3 @@ func (m *Manager) DeleteComponent(entity Entity, componentType string) {
 	}
 	delete(m.components[componentType], entity)
 }
-
-// TODO: DeleteEntity

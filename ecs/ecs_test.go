@@ -7,7 +7,6 @@ import (
 )
 
 type TestComponent struct {
-	Component
 	message string
 }
 
@@ -27,17 +26,14 @@ func TestManager_Component_CRUD(t *testing.T) {
 	t.Log("Add component to entity - succeeds")
 	{
 		e := m.CreateEntity()
-		m.AddComponent(e, TestComponent{
-			Component: Component{
-				Type: "TestComponent",
-			},
-			message: "foo",
-		})
+		require.NoError(t, m.AddComponent(e, Component{Type: "TestComponent", Data: TestComponent{message: "Hello"}}))
 		t.Log("Get component of type from entity - succeeds")
 		{
 			components, ok := m.GetComponent(e, "TestComponent")
 			require.True(t, ok)
 			require.NotNil(t, components)
+			require.Len(t, *components, 1)
+			require.Equal(t, "Hello", (*components)[0].Data.(TestComponent).message)
 		}
 	}
 }
