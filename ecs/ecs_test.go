@@ -44,6 +44,44 @@ func Test_CreateEntity(t *testing.T) {
 		}
 	}
 }
+
+func Test_DeleteEntity(t *testing.T) {
+	t.Log("Delete non-existent entity - fails")
+	{
+		m := NewManager()
+		require.ErrorIs(t, m.DeleteEntity(0), ErrEntityNotFound)
+	}
+	t.Log("Delete existing entity - succeeds")
+	{
+		m := Manager{
+			components: map[string]map[Entity][]Component{
+				TestComponentStringKey: {
+					0: {Component{Type: TestComponentStringKey, Data: TestComponentString{content: "Hello"}}},
+					1: {Component{Type: TestComponentStringKey, Data: TestComponentString{content: "World"}}},
+				},
+			},
+		}
+		require.NoError(t, m.DeleteEntity(0))
+		components, err := m.GetComponentsOfEntity(0, TestComponentStringKey)
+		require.ErrorIs(t, err, ErrComponentNotFound)
+		require.Nil(t, components)
+		require.Len(t, m.freeIDs, 1)
+
+		components, err = m.GetComponentsOfEntity(1, TestComponentStringKey)
+		require.NoError(t, err)
+		require.NotNil(t, components)
+		require.Len(t, *components, 1)
+		require.Equal(t, "World", (*components)[0].Data.(TestComponentString).content)
+
+		t.Log("Create new entity after deleting existing entity - reuses ID")
+		{
+			e := m.CreateEntity()
+			require.Equal(t, Entity(0), e)
+			require.Len(t, m.freeIDs, 0)
+		}
+	}
+}
+
 func Test_AddComponentToEntity(t *testing.T) {
 	m := NewManager()
 	t.Log("Add component to entity - succeeds")
