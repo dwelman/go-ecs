@@ -19,7 +19,7 @@ type Component struct {
 // Manager is a generic type that manages components
 type Manager struct {
 	// components mapped by type -> [entity -> component]
-	components map[string]map[Entity][]Component
+	components map[string]map[Entity]*Component
 	nextID     Entity
 	// freeIDs is a list of IDs that have been deleted and can be reused
 	freeIDs []Entity
@@ -27,7 +27,7 @@ type Manager struct {
 
 func NewManager() *Manager {
 	return &Manager{
-		components: make(map[string]map[Entity][]Component),
+		components: make(map[string]map[Entity]*Component),
 		nextID:     0,
 		freeIDs:    make([]Entity, 0),
 	}
@@ -69,14 +69,14 @@ func (m *Manager) DeleteEntity(entity Entity) error {
 // AddComponentToEntity adds a component to an entity
 func (m *Manager) AddComponentToEntity(entity Entity, component Component) error {
 	if _, ok := m.components[component.Type]; !ok {
-		m.components[component.Type] = make(map[Entity][]Component)
+		m.components[component.Type] = make(map[Entity]*Component)
 	}
-	m.components[component.Type][entity] = append(m.components[component.Type][entity], component)
+	m.components[component.Type][entity] = &component
 	return nil
 }
 
-// GetComponentsOfEntity returns the components of the given type on the given entity
-func (m *Manager) GetComponentsOfEntity(entity Entity, componentType string) (*[]Component, error) {
+// GetComponentOfEntity returns the component of the given type on the given entity
+func (m *Manager) GetComponentOfEntity(entity Entity, componentType string) (*Component, error) {
 	if _, ok := m.components[componentType]; !ok {
 		return nil, ErrComponentTypeNotFound
 	}
@@ -84,14 +84,52 @@ func (m *Manager) GetComponentsOfEntity(entity Entity, componentType string) (*[
 	if !ok {
 		return nil, ErrComponentNotFound
 	}
-	return &c, nil
+	return c, nil
 }
 
-// DeleteComponentsOfEntity deletes the component key for the given entity
-func (m *Manager) DeleteComponentsOfEntity(entity Entity, componentType string) error {
+func (m *Manager) DeleteComponentOfEntity(entity Entity, componentType string) error {
 	if _, ok := m.components[componentType]; !ok {
 		return ErrComponentTypeNotFound
 	}
+	if _, ok := m.components[componentType][entity]; !ok {
+		return ErrComponentNotFound
+	}
 	delete(m.components[componentType], entity)
 	return nil
+}
+
+// GetEntitiesWithComponents returns entities and components where the entity has all types of components
+func (m *Manager) GetEntitiesWithComponents(types []string) (map[Entity][]*Component, error) {
+	result := make(map[Entity][]*Component)
+
+	for _, t := range types {
+		if _, ok := m.components[t]; !ok {
+			return nil, ErrComponentTypeNotFound
+		}
+
+		for entity, component := range m.components[t] {
+			if existingComponents, ok := result[entity]; ok {
+				result[entity] = append(existingComponents, component)
+			} else {
+				result[entity] = []*Component{component}
+			}
+		}
+	}
+
+	// Filter out entities that do not have all the required types of components
+	for entity, components := range result {
+		componentTypes := make(map[string]bool)
+		for _, component := range components {
+			componentTypes[component.Type] = true
+		}
+
+		for _, t := range types {
+			if !componentTypes[t] {
+				delete(result, entity)
+				break
+			}
+		}
+	}
+
+	return result, nil
 }
