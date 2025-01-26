@@ -357,3 +357,126 @@ func Test_GetEntitiesWithComponents(t *testing.T) {
 	}
 
 }
+func Test_GetComponentData(t *testing.T) {
+	t.Log("Get component data of existing type - succeeds")
+	{
+		m := Manager{
+			components: map[string]map[Entity]*Component{
+				TestComponentStringKey: {
+					0: &Component{Type: TestComponentStringKey, Data: TestComponentString{content: "Hello"}},
+					1: &Component{Type: TestComponentStringKey, Data: TestComponentString{content: "World"}},
+				},
+				TestComponentNumberKey: {
+					0: &Component{Type: TestComponentNumberKey, Data: TestComponentNumber{content: 42}},
+					1: &Component{Type: TestComponentNumberKey, Data: TestComponentNumber{content: 43}},
+				},
+			},
+			nextID: 1,
+		}
+
+		entitiesWithComponents, err := m.GetEntitiesWithComponents([]string{TestComponentStringKey, TestComponentNumberKey})
+		require.NoError(t, err)
+		require.NotNil(t, entitiesWithComponents)
+
+		data, err := GetComponentData[TestComponentString](entitiesWithComponents[0], TestComponentStringKey)
+		require.NoError(t, err)
+		require.NotNil(t, data)
+		require.Equal(t, "Hello", data.content)
+
+		numberData, err := GetComponentData[TestComponentNumber](entitiesWithComponents[0], TestComponentNumberKey)
+		require.NoError(t, err)
+		require.NotNil(t, numberData)
+		require.Equal(t, 42, numberData.content)
+	}
+
+	t.Log("Get component data of non-existent type - fails")
+	{
+		m := Manager{
+			components: map[string]map[Entity]*Component{
+				TestComponentStringKey: {
+					0: &Component{Type: TestComponentStringKey, Data: TestComponentString{content: "Hello"}},
+					1: &Component{Type: TestComponentStringKey, Data: TestComponentString{content: "World"}},
+				},
+				TestComponentNumberKey: {
+					0: &Component{Type: TestComponentNumberKey, Data: TestComponentNumber{content: 42}},
+					1: &Component{Type: TestComponentNumberKey, Data: TestComponentNumber{content: 43}},
+				},
+			},
+			nextID: 1,
+		}
+
+		entitiesWithComponents, err := m.GetEntitiesWithComponents([]string{TestComponentStringKey, TestComponentNumberKey})
+		require.NoError(t, err)
+		require.NotNil(t, entitiesWithComponents)
+
+		data, err := GetComponentData[TestComponentString](entitiesWithComponents[0], "NonExistentType")
+		require.ErrorIs(t, err, ErrComponentNotFound)
+		require.Nil(t, data)
+	}
+
+	t.Log("Get component data with type mismatch - fails")
+	{
+		m := Manager{
+			components: map[string]map[Entity]*Component{
+				TestComponentStringKey: {
+					0: &Component{Type: TestComponentStringKey, Data: TestComponentString{content: "Hello"}},
+					1: &Component{Type: TestComponentStringKey, Data: TestComponentString{content: "World"}},
+				},
+				TestComponentNumberKey: {
+					0: &Component{Type: TestComponentNumberKey, Data: TestComponentNumber{content: 42}},
+					1: &Component{Type: TestComponentNumberKey, Data: TestComponentNumber{content: 43}},
+				},
+			},
+			nextID: 1,
+		}
+
+		entitiesWithComponents, err := m.GetEntitiesWithComponents([]string{TestComponentStringKey, TestComponentNumberKey})
+		require.NoError(t, err)
+		require.NotNil(t, entitiesWithComponents)
+
+		data, err := GetComponentData[TestComponentString](entitiesWithComponents[0], TestComponentNumberKey)
+		require.ErrorIs(t, err, ErrComponentDataMismatch)
+		require.Nil(t, data)
+	}
+}
+func Test_GetDataAsType(t *testing.T) {
+	t.Log("Get data as correct type - succeeds")
+	{
+		component := Component{Type: TestComponentStringKey, Data: TestComponentString{content: "Hello"}}
+		data, err := GetDataAsType[TestComponentString](&component)
+		require.NoError(t, err)
+		require.Equal(t, "Hello", data.content)
+	}
+
+	t.Log("Get data as incorrect type - fails")
+	{
+		component := Component{Type: TestComponentStringKey, Data: TestComponentString{content: "Hello"}}
+		data, err := GetDataAsType[TestComponentNumber](&component)
+		require.ErrorIs(t, err, ErrComponentDataMismatch)
+		require.Equal(t, TestComponentNumber{}, data)
+	}
+
+	t.Log("Get data as correct type with number - succeeds")
+	{
+		component := Component{Type: TestComponentNumberKey, Data: TestComponentNumber{content: 42}}
+		data, err := GetDataAsType[TestComponentNumber](&component)
+		require.NoError(t, err)
+		require.Equal(t, 42, data.content)
+	}
+
+	t.Log("Get data as incorrect type with number - fails")
+	{
+		component := Component{Type: TestComponentNumberKey, Data: TestComponentNumber{content: 42}}
+		data, err := GetDataAsType[TestComponentString](&component)
+		require.ErrorIs(t, err, ErrComponentDataMismatch)
+		require.Equal(t, TestComponentString{}, data)
+	}
+
+	t.Log("Get data as pointer type - succeeds")
+	{
+		component := Component{Type: TestComponentStringKey, Data: &TestComponentString{content: "Hello"}}
+		data, err := GetDataAsType[*TestComponentString](&component)
+		require.NoError(t, err)
+		require.Equal(t, "Hello", data.content)
+	}
+}

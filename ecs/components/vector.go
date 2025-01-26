@@ -1,19 +1,22 @@
-package ecs
+package components
 
-type Vector2 struct {
-	X float64
-	Y float64
+import (
+	"go-ecs/ecs"
+
+	"gonum.org/v1/gonum/spatial/r2"
+	"gonum.org/v1/gonum/spatial/r3"
+)
+
+func Vector2(x float64, y float64) ecs.Component {
+	return ecs.Component{
+		Type: "Vector2",
+		Data: r2.Vec{X: x, Y: y},
+	}
 }
 
-type Vector3 struct {
-	X float64
-	Y float64
-	Z float64
-}
-
-type Vector4 struct {
-	X float64
-	Y float64
-	Z float64
-	W float64
+func Vector3(x float64, y float64, z float64) ecs.Component {
+	return ecs.Component{
+		Type: "Vector3",
+		Data: r3.Vec{X: x, Y: y, Z: z},
+	}
 }

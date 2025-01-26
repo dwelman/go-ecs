@@ -7,6 +7,7 @@ import (
 var ErrComponentTypeNotFound = errors.New("manager does not have components of this type")
 var ErrComponentNotFound = errors.New("component not found")
 var ErrEntityNotFound = errors.New("entity not found")
+var ErrComponentDataMismatch = errors.New("component data type mismatch")
 
 // Entity acts as a container of components, it is just an ID
 type Entity uint32
@@ -14,6 +15,15 @@ type Entity uint32
 type Component struct {
 	Type string
 	Data any
+}
+
+func GetDataAsType[T any](c *Component) (T, error) {
+	data, ok := c.Data.(T)
+	if !ok {
+		var zero T
+		return zero, ErrComponentDataMismatch
+	}
+	return data, nil
 }
 
 // Manager is a generic type that manages components
@@ -132,4 +142,18 @@ func (m *Manager) GetEntitiesWithComponents(types []string) (map[Entity][]*Compo
 	}
 
 	return result, nil
+}
+
+// GetComponentData returns the data of a component of the given type from a list of components
+func GetComponentData[T any](components []*Component, componentType string) (*T, error) {
+	for _, component := range components {
+		if component.Type == componentType {
+			data, ok := component.Data.(T)
+			if !ok {
+				return nil, ErrComponentDataMismatch
+			}
+			return &data, nil
+		}
+	}
+	return nil, ErrComponentNotFound
 }
